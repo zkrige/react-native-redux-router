@@ -1,46 +1,46 @@
 {
+  "_from": "github:zkrige/react-native-router-redux",
+  "_id": "react-native-router-redux@0.2.2",
+  "_inBundle": false,
+  "_integrity": "sha1-05yk9PV70LumCm3BQw4hTemLpWo=",
+  "_location": "/react-native-router-redux",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "git",
+    "raw": "react-native-router-redux@github:zkrige/react-native-router-redux",
+    "name": "react-native-router-redux",
+    "escapedName": "react-native-router-redux",
+    "rawSpec": "github:zkrige/react-native-router-redux",
+    "saveSpec": "github:zkrige/react-native-router-redux",
+    "fetchSpec": null,
+    "gitCommittish": "master"
+  },
+  "_requiredBy": [
+    "/"
+  ],
+  "_resolved": "github:zkrige/react-native-router-redux#fde403a86516564b738bb2bb2f27f9c7517673af",
+  "_spec": "react-native-router-redux@github:zkrige/react-native-router-redux",
+  "_where": "/Users/zayinkrige/Dropbox/Business/StreamerTail/6Winks/webapp",
   "author": {
-    "email": "akso.nov@gmail.com",
-    "name": "Pavlo Aksonov",
-    "url": "http://aksonov.com"
+    "name": "Team Qwikly"
   },
+  "bundleDependencies": false,
   "dependencies": {
-    "react-redux": "^4.4.5",
-    "redux": "^3.5.2"
+    "react-native-navbar": "1.5.x",
+    "react-native-tabs": "1.0.x"
   },
-  "scripts": {
-    "test": "mocha --compilers js:babel-core/register"
-  },
-  "devDependencies": {
-    "babel": "^6.1.18",
-    "babel-core": "^6.2.1",
-    "babel-plugin-typecheck": "^3.1.0",
-    "babel-preset-es2015": "^6.9.0",
-    "babel-preset-react": "^6.3.13",
-    "mocha": "^2.3.4"
-  },
-  "description": "React Native Router using Redux architecture",
-  "directories": {},
-  "installable": true,
+  "deprecated": false,
+  "description": "A routing library for React Native and Redux",
   "keywords": [
-    "flux",
+    "routing",
     "redux",
-    "navigation",
-    "react-components",
-    "react-native",
-    "react-native-router",
-    "router",
-    "react-native-router-flux"
+    "react-native"
   ],
-  "license": "ISC",
+  "license": "MIT",
   "main": "index.js",
-  "maintainers": [
-    {
-      "name": "aksonov",
-      "email": "pavlo.aksonov@gmail.com"
-    }
-  ],
-  "name": "react-native-redux-router",
-  "optionalDependencies": {},
-  "version": "1.0.7"
+  "name": "react-native-router-redux",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "version": "0.2.2"
 }

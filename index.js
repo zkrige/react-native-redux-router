@@ -1,284 +1,364 @@
-import React from 'react';
-import ReactNative from 'react-native';
-const {View, Navigator, Text, TouchableWithoutFeedback, StyleSheet} = ReactNative;
-import {Actions, CoreActions} from './actions';
-import {INIT, PUSH, REPLACE, POP, DISMISS, RESET} from './actions';
+import React, { Component } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { Navigator } from 'react-native-deprecated-custom-components';
+import Animations from './src/Animations';
+import { NavBar } from './src/NavBar';
+import TabBar from './src/TabBar';
+import * as actions from './src/actions';
+import reducer from './src/reducer';
 
-import routerReducer from './reducer';
-import Animations from './Animations';
-import { connect } from 'react-redux';
-import { bindActionCreators } from 'redux';
+const actionTypes = actions.actionTypes;
 
-// schema class represents schema for routes and it is processed inside Router component
+const actionMap = {
+  push: actionTypes.ROUTER_PUSH,
+  replace: actionTypes.ROUTER_REPLACE,
+  reset: actionTypes.ROUTER_RESET,
+};
+
 class Schema extends React.Component {
-    className(){
-        return "Schema";
-    }
-    render(){
-        return null;
-    }
+  className() {
+    return 'Schema';
+  }
+
+  render() {
+    return null;
+  }
 }
 
-// action class represents simple action which will be handled by user-defined stores
-class Action extends React.Component {
-    className(){
-        return "Action";
-    }
-    render(){
-        return null;
-    }
-}
-
-// route class processed inside Router component
 class Route extends React.Component {
-    className(){
-        return "Route";
-    }
-    render(){
-        return null;
-    }
+  className() {
+    return 'Route';
+  }
 
+  render() {
+    return null;
+  }
+}
+
+class TabRoute extends React.Component {
+  className() {
+    return 'TabRoute';
+  }
+
+  render() {
+    return null;
+  }
 }
 
 class Router extends React.Component {
-    constructor(props){
-        super(props);
-        this.routes = {};
-        this.schemas = {};
-        var {dispatch} = props;
-        if (!dispatch){
-            throw new Error("No redux dispatch is provided to Router!");
+  constructor(props) {
+    super(props);
+
+    const { actions = {}, dispatch } = props;
+    actions.routes = {};
+
+    this.routes = {};
+
+    this.schemas = {
+      default: {
+        actions: props.actions,
+        layout: 'flex',
+        sceneConfig: Animations.FlatFloatFromRight,
+      },
+    };
+    this.schemas.tabs = Object.assign({}, this.schemas.default);
+
+    this.tabStyles = {};
+    this.initial = { name: props.initial };
+
+    React.Children.forEach(props.children, (child, index) => {
+      var name = child.props.name;
+
+      if (child.type.prototype.className() == 'Schema') {
+        this.schemas[name] = Object.assign({}, this.schemas[name], child.props);
+        if (name === 'default') {
+          this.schemas.tabs = Object.assign({}, this.schemas.tabs, {
+            footer: child.props.tabBar,
+          });
+
+          Object.keys(this.schemas).forEach(key => {
+            this.schemas[key] = Object.assign(
+              {}, this.schemas.default, this.schemas[key]);
+          });
         }
-
-        var self = this;
-        this.initial = props.initial;
-        var RouterActions = props.actions || Actions;
-
-        React.Children.forEach(props.children, function (child, index){
-            var name = child.props.name;
-            if (!name){
-                throw new Error("Name is not defined for "+child.type.prototype.className())
+      } else if (child.type.prototype.className() == 'TabRoute') {
+        const tabBarName = child.props.name;
+        this.routes[tabBarName] = {};
+        this.tabStyles[tabBarName] = {
+          barTint: child.props.barTint,
+          tint: child.props.tint,
+        };
+        actions.routes[tabBarName] = {};
+        React.Children.forEach(child.props.children, (tabChild, tabIndex) => {
+          const tabName = tabChild.props.name;
+          this.routes[tabBarName][tabName] = tabChild.props;
+          this.routes[tabName] = tabChild.props;
+          if (tabChild.props.initial || !this.initial.name) {
+            this.initial.name = tabName;
+            this.initial.tabBarName = tabBarName;
+          }
+          if (props.initial === tabName) {
+            this.initial.tabBarName = tabBarName;
+          }
+          actions.routes[tabBarName][tabName] = (data = {}) => e => {
+            if (typeof(data) !== 'object') {
+              data = { data }
             }
-            if (child.type.prototype.className() == "Schema") {
-                self.schemas[name] = child.props;
-            } else if (child.type.prototype.className() == "Route") {
-                if (child.props.initial || !self.initial) {
-                    self.initial = name;
-                }
-                if (!(RouterActions[name])) {
-                    RouterActions[name] = function (data) {
-                        if (typeof(data)!='object'){
-                            data={data:data};
-                        }
-                        var args = {name: name, data:data};
-                        var action = child.props.type || 'push';
-                        dispatch(CoreActions[action](args));
-                    };
-                }
-                self.routes[name] = child.props;
-                if (!child.props.component && !child.props.children){
-                    console.error("No route component is defined for name: "+name);
-                    return;
-                }
 
-            } else  if (child.type.prototype.className() == "Action") {
-                //console.log("Added action: " + name);
-                if (!(RouterActions[name])) {
-                    RouterActions[name] = function(data){
-                        var props = self.extend({}, self.props);
-                        props = self.extend(props, child.props);
-                        dispatch(CoreActions.custom({name, props, data}));
-                    };
-                }
-            }
+            dispatch({
+              type: actionMap[data.type || tabChild.props.type] || 'ROUTER_PUSH',
+              payload: { name: tabName, tabBarName, data }
+            });
+          };
         });
-        let dispatched = bindActionCreators(CoreActions, dispatch);
-        for (var i in dispatched)
-            RouterActions[i] = dispatched[i];
-        this.routerActions = RouterActions;
-        this.initialRoute =  this.routes[this.initial] || console.error("No initial route "+this.initial);
-        this.state = {initial: this.initial};
+      } else if (child.type.prototype.className() == 'Route') {
+        if (child.props.initial || !this.initial.name) {
+          this.initial.name = name;
+        }
+
+        actions.routes[name] = (data = {}) => e => {
+          if (typeof(data) !== 'object') {
+            data = { data }
+          }
+
+          dispatch({
+            type: actionMap[data.type || child.props.type] || 'ROUTER_PUSH',
+            payload: { name, data },
+          });
+        };
+
+        this.routes[name] = child.props;
+
+        if (!child.props.component && !child.props.children) {
+          console.error('No route component is defined for name: ' + name);
+          return;
+        }
+      }
+    });
+
+    this.initialRoute = this.routes[this.initial.name]
+      || console.error('No initial route ' + this.initial.name);
+  }
+
+  componentDidMount() {
+    this.props.actions.init(this.initial);
+  }
+
+  componentWillReceiveProps(nextProps) {
+    const routeKey = router => (
+      '' + router.activeTabBar + router.activeTab + router.currentRoute
+    );
+
+    if (routeKey(this.props.router) !== routeKey(nextProps.router)) {
+      this.handleRouteChange(nextProps.router);
+    }
+  }
+
+  render() {
+    if (!(this.props.initial || this.initial)) {
+      console.error('No initial attribute!');
     }
 
-    componentWillReceiveProps(props){
-        if (props.mode){
-            this.onChange(props)
-        }
+    this.initialRoute = this.routes[this.props.initial || this.initial.name];
+
+    if (!this.initialRoute) {
+      console.error('No initial route!');
     }
 
-    onChange(page){
-        if (page.mode==PUSH || page.mode==REPLACE){
-            var route = this.routes[page.currentRoute];
-            if (!route){
-                console.error("No route is defined for name: "+page.currentRoute);
-                return;
-            }
-            // check if route is popup
-            if (route.schema=='popup'){
-                var element = React.createElement(route.component, Object.assign({}, route, page.data, {dispatch: this.props.dispatch, routes:this.routerActions}));
-                this.setState({modal: element});
-            } else {
-                if (page.mode == REPLACE){
-                    this.refs.nav.replace(this.getRoute(route, page.data))
-                } else {
-                    this.refs.nav.push(this.getRoute(route, page.data))
-                }
-            }
-        }
-        if (page.mode==POP){
-            var routes = this.refs.nav.getCurrentRoutes();
-            var num = page.num || (routes.length - page.routes.length);
-            // pop only existing routes!
-            if (num < routes.length) {
-                this.refs.nav.popToRoute(routes[routes.length - 1 - num]);
-            } else {
-                if (this.props.onExit){
-                    this.props.onExit(routes[0], page.data || {});
-                }
-            }
-        }
-        if (page.mode==DISMISS) {
-            this.setState({modal: null});
-        }
+    const currentRoute = this.getRoute(
+      this.routes[this.props.router.currentRoute],
+      this.props.router);
 
-        if (page.mode==RESET){
-            // reset navigation stack
-            this.refs.nav.immediatelyResetRouteStack([this.getRoute(this.routes[page.initial], {})])
-        }
+    let footer = currentRoute.footer;
+    if (footer) {
+      footer = React.cloneElement(footer, {
+        navigator: this.nav,
+      });
     }
 
-    componentDidMount(){
-        this.props.dispatch(Actions.init(this.initial));
+    return (
+      <View style={styles.transparent}>
+        <Navigator
+          configureScene={(route) => route.sceneConfig}
+          initialRoute={this.getRoute(this.initialRoute, this.props.router)}
+          ref={(nav) => this.nav = nav}
+          renderScene={this.renderScene.bind(this)}
+        />
+        {footer}
+      </View>
+    );
+  }
+
+  renderScene(route, navigator) {
+    var Component = route.component;
+    var navBar = route.navigationBar;
+
+    if (navBar) {
+      navBar = React.cloneElement(navBar, {
+        navigator: navigator,
+        route: route,
+        router: this.props.router,
+      });
     }
 
-    renderScene(route, navigator) {
-        var Component = route.component;
-        var navBar = route.navigationBar;
-        var footer = route.footer;
+    var props = Object.assign({}, this.props);
+    delete props.children;
+    delete props.initial;
 
-        if (navBar) {
-            navBar = React.cloneElement(navBar, {
-                navigator: navigator,
-                route: route,
-                dispatch:this.props.dispatch,
-                routes:this.routerActions
-            });
-        }
-        if (footer){
-            footer = React.cloneElement(footer, {
-                navigator: navigator,
-                route: route,
-                dispatch:this.props.dispatch,
-                routes:this.routerActions
-            });
-        }
-        var child = null;
-        if (Component){
-            child = <Component key={route.name} navigator={navigator} route={route} {...route.passProps} routes={this.routerActions} dispatch={this.props.dispatch} />
-        } else {
-            child = React.Children.only(this.routes[route.name].children);
-            child = React.cloneElement(child, {schemas: this.schemas});
-        }
-
-        return (
-            <View style={styles.transparent}>
-                {navBar}
-                {child}
-                {footer}
-            </View>
-        )
+    var child = null;
+    if (Component) {
+      child = (
+        <Component
+          key={route.name}
+          {...props}
+          {...route.passProps}
+          />
+      );
+    } else {
+      child = React.Children.only(this.routes[route.name].children);
+      child = React.cloneElement(child, {schemas: this.schemas});
     }
 
-    extend(destination, source) {
-        for (var property in source) {
-            if (source.hasOwnProperty(property)) {
-                destination[property] = source[property];
-            }
-        }
-        return destination;
+    const layout = this.schemas.default.layout;
+
+    if (layout === 'flex') {
+      return (
+        <View style={styles.transparent}>
+          {navBar}
+          {child}
+        </View>
+      );
+    } else if (layout === 'absolute') {
+      return (
+        <View style={styles.transparent}>
+          {child}
+          {navBar}
+        </View>
+      );
+    } else {
+      return console.error('Layout should be flex or absolute.');
+    }
+  }
+
+  getRoute(routeProps, router = { data: {} }) {
+    const { data = {} } = router;
+
+    if (!routeProps) {
+      return {};
     }
 
-    getRoute(route, data) {
-        if (!route){
-            console.error("No route for data:"+JSON.stringify(data));
-        }
-        var schema = this.schemas[route.schema || 'default'] || {};
-        var sceneConfig = route.sceneConfig || schema.sceneConfig || Animations.None;
-        var NavBar = route.navBar || schema.navBar;
-        var Footer = route.footer || schema.footer;
+    var schema = this.schemas[routeProps.schema || 'default'] || {};
 
-        var navBar;
-        if (NavBar){
-            navBar = <NavBar {...schema} {...route} {...data} routes={this.routerActions} dispatch={this.props.dispatch}/>
-        }
-
-        var footer;
-        if (Footer){
-            footer = <Footer {...schema} {...route} {...data} routes={this.routerActions} dispatch={this.props.dispatch} />
-        }
-        var props = this.extend({}, route);
-        props = this.extend(props, data);
-        return {
-            name: route.name,
-            component: route.component,
-            sceneConfig: {
-                ...sceneConfig,
-            },
-            navigationBar: route.hideNavBar ? null : navBar,
-            footer: route.hideFooter ? null : footer,
-            passProps: props
-        }
+    if (router.activeTabBar && this.schemas.tabs) {
+      schema = this.schemas.tabs
+      var tabs = this.routes[router.activeTabBar];
+      var tabStyles = this.tabStyles[router.activeTabBar];
     }
 
-    render(){
-        if (!(this.props.initial || this.initial)){
-            console.error("No initial attribute!");
-        }
-        this.initialRoute =  this.routes[this.props.initial || this.initial];
-        if (!this.initialRoute) {
-            console.error("No initial route!");
-        }
+    var sceneConfig = routeProps.sceneConfig || schema.sceneConfig || Animations.None;
+    var NavBar = routeProps.navBar || schema.navBar;
+    var Footer = routeProps.footer || schema.footer;
 
-        var modal = null;
-        if (this.state.modal){
-            modal = (<View style={styles.container}>
-                    <TouchableWithoutFeedback onPress={()=>Actions.dismiss()}><View style={[styles.container,{backgroundColor:'black',opacity:0.5},this.props.popupStyle]}/></TouchableWithoutFeedback>
-                    {this.state.modal}
-
-                </View>
-            );
-        }
-        return (
-            <View style={styles.transparent}>
-                <Navigator
-                    renderScene={this.renderScene.bind(this)}
-                    configureScene={(route) => { return route.sceneConfig;}}
-                    ref="nav"
-                    initialRoute={this.getRoute(this.initialRoute)}
-                    />
-                {modal}
-            </View>
-        );
-
+    var navBar;
+    if (NavBar) {
+      navBar = (
+        <NavBar {...schema} {...routeProps} {...data} />
+      );
     }
 
+    var footer;
+    if (Footer){
+      footer = (
+        <Footer {...schema} {...routeProps} {...data}
+          activeTab={router.activeTab}
+          tabs={tabs}
+          tabStyles={tabStyles}
+          />
+      );
+    }
+
+    return {
+      component: routeProps.component,
+      footer: routeProps.hideFooter ? null : footer,
+      name: routeProps.name,
+      navigationBar: routeProps.hideNavBar ? null : navBar,
+      passProps: { routerData: data },
+      sceneConfig: { ...sceneConfig },
+    }
+  }
+
+  handleRouteChange(router) {
+    const { data = {}, mode } = router;
+
+    if (mode === actionTypes.ROUTER_CHANGE_TAB) {
+      let routes = [];
+
+      if (router.routeStacks[router.activeTabBar][router.activeTab]) {
+        routes = router.routeStacks[router.activeTabBar][router.activeTab];
+      } else {
+        routes = router.routes.map(route => (
+          this.getRoute(this.routes[route], router)
+        ));
+      }
+
+      this.nav.immediatelyResetRouteStack(routes);
+    }
+
+    if (mode === actionTypes.ROUTER_POP) {
+      const num = data.num || 1;
+      const routes = this.nav.getCurrentRoutes();
+      if (num < routes.length) {
+        this.nav.popToRoute(routes[routes.length - 1 - num]);
+      } else {
+        this.nav.popToTop();
+      }
+    }
+
+    if (mode === actionTypes.ROUTER_PUSH) {
+      this.nav.push(this.getRoute(
+        this.routes[router.currentRoute], router
+      ));
+    }
+
+    if (mode === actionTypes.ROUTER_REPLACE) {
+      this.nav.replace(this.getRoute(
+        this.routes[router.currentRoute], router
+      ));
+    }
+
+    if (mode === actionTypes.ROUTER_RESET) {
+      this.nav.immediatelyResetRouteStack([
+        this.getRoute(this.routes[router.currentRoute], router)
+      ]);
+    }
+  }
 }
 
 var styles = StyleSheet.create({
-    container: {
-        position: 'absolute',
-        top:0,
-        bottom:0,
-        left:0,
-        right:0,
-        backgroundColor:'transparent',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    transparent: {
-      flex:1,
-      backgroundColor: "transparent"
-    }
+  container: {
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    bottom: 0,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  transparent: {
+    backgroundColor: 'transparent',
+    flex: 1,
+  },
 });
 
-module.exports = {Router: connect(state=>state.routerReducer)(Router), Actions, Action, Route, Animations, Schema, routerReducer}
+module.exports = {
+  Animations,
+  NavBar,
+  Route,
+  Router,
+  Schema,
+  TabBar,
+  TabRoute,
+  actions,
+  reducer,
+}
